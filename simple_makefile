@@ -1,0 +1,87 @@
+# Simple Makefile for Binary CKKS Demo
+# Uses only NTL and standard C++ libraries
+
+CXX = g++
+CXXFLAGS = -std=c++17 -O2 -g -Wall -Wextra
+
+# NTL and GMP library paths
+LIBS = -lntl -lgmp -lm -lpthread
+
+# Source files
+SIMPLE_SOURCES = simple_binary_ckks.cpp
+SIMPLE_DEMO = simple_binary_ckks_demo.cpp
+SIMPLE_OBJECTS = $(SIMPLE_SOURCES:.cpp=.o)
+SIMPLE_DEMO_OBJECTS = $(SIMPLE_DEMO:.cpp=.o)
+
+# Executable
+SIMPLE_EXEC = simple_binary_ckks_demo
+
+# Default target
+all: $(SIMPLE_EXEC)
+
+# Build the simple demo
+$(SIMPLE_EXEC): $(SIMPLE_OBJECTS) $(SIMPLE_DEMO_OBJECTS)
+	@echo "Linking $(SIMPLE_EXEC)..."
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
+	@echo "Build successful! Run with ./$(SIMPLE_EXEC)"
+
+# Compile source files
+%.o: %.cpp
+	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Clean
+clean:
+	@echo "Cleaning..."
+	rm -f $(SIMPLE_OBJECTS) $(SIMPLE_DEMO_OBJECTS) $(SIMPLE_EXEC)
+	@echo "Clean complete"
+
+# Run the demo
+run: $(SIMPLE_EXEC)
+	@echo "Running Simple Binary CKKS demo..."
+	./$(SIMPLE_EXEC)
+
+# Check dependencies
+check-deps:
+	@echo "Checking dependencies..."
+	@echo "Looking for NTL library..."
+	@if ldconfig -p | grep -q libntl; then \
+		echo "✓ NTL library found"; \
+	else \
+		echo "✗ NTL library not found. Please install with: sudo apt install libntl-dev"; \
+		exit 1; \
+	fi
+	@echo "Looking for GMP library..."
+	@if ldconfig -p | grep -q libgmp; then \
+		echo "✓ GMP library found"; \
+	else \
+		echo "✗ GMP library not found. Please install with: sudo apt install libgmp-dev"; \
+		exit 1; \
+	fi
+	@echo "All dependencies found!"
+
+# Build with debug information
+debug: CXXFLAGS += -DDEBUG -g3 -O0
+debug: $(SIMPLE_EXEC)
+	@echo "Debug build complete"
+
+# Build with maximum optimization
+release: CXXFLAGS += -DNDEBUG -O3 -march=native
+release: $(SIMPLE_EXEC)
+	@echo "Release build complete"
+
+# Print help
+help:
+	@echo "Simple Binary CKKS Makefile"
+	@echo "============================="
+	@echo ""
+	@echo "Available targets:"
+	@echo "  all         - Build the demo (default)"
+	@echo "  clean       - Remove build artifacts"
+	@echo "  run         - Build and run the demo"
+	@echo "  check-deps  - Check if dependencies are installed"
+	@echo "  debug       - Build with debug information"
+	@echo "  release     - Build with maximum optimization"
+	@echo "  help        - Show this help"
+
+.PHONY: all clean run check-deps debug release help
