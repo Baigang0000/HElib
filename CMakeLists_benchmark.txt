@@ -1,0 +1,95 @@
+cmake_minimum_required(VERSION 3.10)
+project(CKKS_Performance_Comparison)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find required packages
+find_package(PkgConfig REQUIRED)
+find_package(Threads REQUIRED)
+
+# Find HElib
+find_path(HELIB_INCLUDE_DIR helib/helib.h HINTS /usr/local/include)
+find_library(HELIB_LIBRARY helib HINTS /usr/local/lib)
+
+if(NOT HELIB_INCLUDE_DIR OR NOT HELIB_LIBRARY)
+    message(FATAL_ERROR "HElib not found. Please install HElib first.")
+endif()
+
+# Find NTL (required by HElib and our binary CKKS)
+find_path(NTL_INCLUDE_DIR NTL/ZZ.h HINTS /usr/local/include)
+find_library(NTL_LIBRARY ntl HINTS /usr/local/lib)
+
+if(NOT NTL_INCLUDE_DIR OR NOT NTL_LIBRARY)
+    message(FATAL_ERROR "NTL not found. Please install NTL first.")
+endif()
+
+# Find GMP (required by NTL)
+find_library(GMP_LIBRARY gmp HINTS /usr/local/lib)
+if(NOT GMP_LIBRARY)
+    message(FATAL_ERROR "GMP not found. Please install GMP first.")
+endif()
+
+# Include directories
+include_directories(${HELIB_INCLUDE_DIR})
+include_directories(${NTL_INCLUDE_DIR})
+include_directories(.)
+
+# Compiler flags for optimization and debugging
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wextra")
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# Build the binary CKKS implementation
+add_library(simple_binary_ckks STATIC
+    simple_binary_ckks.cpp
+)
+
+target_link_libraries(simple_binary_ckks
+    ${NTL_LIBRARY}
+    ${GMP_LIBRARY}
+    Threads::Threads
+)
+
+# Build the performance comparison benchmark
+add_executable(ckks_performance_comparison
+    ckks_performance_comparison.cpp
+)
+
+target_link_libraries(ckks_performance_comparison
+    simple_binary_ckks
+    ${HELIB_LIBRARY}
+    ${NTL_LIBRARY}
+    ${GMP_LIBRARY}
+    Threads::Threads
+)
+
+# Build the binary CKKS demo (optional)
+add_executable(simple_binary_ckks_demo
+    simple_binary_ckks_demo.cpp
+)
+
+target_link_libraries(simple_binary_ckks_demo
+    simple_binary_ckks
+    ${NTL_LIBRARY}
+    ${GMP_LIBRARY}
+    Threads::Threads
+)
+
+# Print configuration info
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C++ flags: ${CMAKE_CXX_FLAGS}")
+message(STATUS "HElib include: ${HELIB_INCLUDE_DIR}")
+message(STATUS "HElib library: ${HELIB_LIBRARY}")
+message(STATUS "NTL include: ${NTL_INCLUDE_DIR}")
+message(STATUS "NTL library: ${NTL_LIBRARY}")
+message(STATUS "GMP library: ${GMP_LIBRARY}")
+
+# Install targets
+install(TARGETS ckks_performance_comparison simple_binary_ckks_demo
+    RUNTIME DESTINATION bin
+)
