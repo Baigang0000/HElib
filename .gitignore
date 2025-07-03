@@ -1,5 +1,7 @@
 gh-pages/
 build/
+bin/
+lib/
 
 __pycache__/
 
@@ -38,3 +40,40 @@ src/*.txt
 
 /html/
 /latex/
+
+# Object files
+*.o
+*.obj
+
+# Executables
+simple_binary_ckks_demo
+binary_ckks_demo
+*.exe
+*.out
+
+# Shared libraries
+*.so
+*.dylib
+*.dll
+
+# Static libraries
+*.a
+*.lib
+
+# Core dumps
+core
+core.*
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
