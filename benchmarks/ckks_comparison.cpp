@@ -26,7 +26,7 @@
 namespace {
 
 /**
- * Binary CKKS Wrapper for Benchmark Framework
+ * Binary CKKS Meta structure for benchmark framework
  */
 struct BinaryCKKSMeta {
   std::unique_ptr<SimpleBinaryCKKS> scheme;
@@ -41,48 +41,27 @@ struct BinaryCKKSMeta {
   }
 };
 
-/**
- * Combined benchmark parameters for comparison
- */
-struct ComparisonParams {
-  long m;        // Ring dimension
-  long r;        // Precision (for standard CKKS)
-  long L;        // Bits (for standard CKKS)
-  long security; // Security level (for binary CKKS)
+struct BinaryMeta {
+  std::unique_ptr<BinaryCKKSMeta> data;
   
-  ComparisonParams(long _m, long _r, long _L, long _security)
-    : m(_m), r(_r), L(_L), security(_security) {}
-};
-
-// Global benchmark state for comparison
-struct ComparisonMeta {
-  std::unique_ptr<ContextAndKeys> standard_data;
-  std::unique_ptr<BinaryCKKSMeta> binary_data;
-  
-  ComparisonMeta& operator()(ComparisonParams& params) {
-    // Initialize standard CKKS if needed
-    Params std_params(params.m, params.r, params.L);
-    if (standard_data == nullptr || standard_data->params != std_params) {
-      standard_data = std::make_unique<ContextAndKeys>(std_params);
+  BinaryMeta& operator()(Params& params) {
+    // Use ring dimension from params.m and default security level
+    long security = 128; // Default security level
+    if (data == nullptr || 
+        data->ring_dim != params.m || 
+        data->security_level != security) {
+      data = std::make_unique<BinaryCKKSMeta>(params.m, security);
     }
-    
-    // Initialize binary CKKS if needed  
-    if (binary_data == nullptr || 
-        binary_data->ring_dim != params.m || 
-        binary_data->security_level != params.security) {
-      binary_data = std::make_unique<BinaryCKKSMeta>(params.m, params.security);
-    }
-    
     return *this;
   }
 };
 
 // ===================== Standard CKKS Benchmarks =====================
 
-static void standard_ckks_keygen(benchmark::State& state, ComparisonMeta& meta) {
+static void standard_ckks_keygen(benchmark::State& state, Meta& meta) {
   for (auto _ : state) {
     state.PauseTiming();
-    helib::Context context = meta.standard_data->context;
+    helib::Context context = meta.data->context;
     state.ResumeTiming();
     
     helib::SecKey sk(context);
@@ -93,40 +72,40 @@ static void standard_ckks_keygen(benchmark::State& state, ComparisonMeta& meta) 
   }
 }
 
-static void standard_ckks_encrypt(benchmark::State& state, ComparisonMeta& meta) {
-  helib::Ptxt<helib::CKKS> ptxt(meta.standard_data->context);
+static void standard_ckks_encrypt(benchmark::State& state, Meta& meta) {
+  helib::Ptxt<helib::CKKS> ptxt(meta.data->context);
   ptxt.random();
   
   for (auto _ : state) {
-    helib::Ctxt ctxt(meta.standard_data->publicKey);
-    meta.standard_data->publicKey.Encrypt(ctxt, ptxt);
+    helib::Ctxt ctxt(meta.data->publicKey);
+    meta.data->publicKey.Encrypt(ctxt, ptxt);
     benchmark::DoNotOptimize(ctxt);
   }
 }
 
-static void standard_ckks_decrypt(benchmark::State& state, ComparisonMeta& meta) {
-  helib::Ptxt<helib::CKKS> ptxt(meta.standard_data->context);
+static void standard_ckks_decrypt(benchmark::State& state, Meta& meta) {
+  helib::Ptxt<helib::CKKS> ptxt(meta.data->context);
   ptxt.random();
-  helib::Ctxt ctxt(meta.standard_data->publicKey);
-  meta.standard_data->publicKey.Encrypt(ctxt, ptxt);
+  helib::Ctxt ctxt(meta.data->publicKey);
+  meta.data->publicKey.Encrypt(ctxt, ptxt);
   
   for (auto _ : state) {
-    helib::Ptxt<helib::CKKS> decrypted_result(meta.standard_data->context);
-    meta.standard_data->secretKey.Decrypt(decrypted_result, ctxt);
+    helib::Ptxt<helib::CKKS> decrypted_result(meta.data->context);
+    meta.data->secretKey.Decrypt(decrypted_result, ctxt);
     benchmark::DoNotOptimize(decrypted_result);
   }
 }
 
-static void standard_ckks_add(benchmark::State& state, ComparisonMeta& meta) {
-  helib::Ptxt<helib::CKKS> ptxt1(meta.standard_data->context);
-  helib::Ptxt<helib::CKKS> ptxt2(meta.standard_data->context);
+static void standard_ckks_add(benchmark::State& state, Meta& meta) {
+  helib::Ptxt<helib::CKKS> ptxt1(meta.data->context);
+  helib::Ptxt<helib::CKKS> ptxt2(meta.data->context);
   ptxt1.random();
   ptxt2.random();
 
-  helib::Ctxt ctxt1(meta.standard_data->publicKey);
-  helib::Ctxt ctxt2(meta.standard_data->publicKey);
-  meta.standard_data->publicKey.Encrypt(ctxt1, ptxt1);
-  meta.standard_data->publicKey.Encrypt(ctxt2, ptxt2);
+  helib::Ctxt ctxt1(meta.data->publicKey);
+  helib::Ctxt ctxt2(meta.data->publicKey);
+  meta.data->publicKey.Encrypt(ctxt1, ptxt1);
+  meta.data->publicKey.Encrypt(ctxt2, ptxt2);
   
   for (auto _ : state) {
     state.PauseTiming();
@@ -138,16 +117,16 @@ static void standard_ckks_add(benchmark::State& state, ComparisonMeta& meta) {
   }
 }
 
-static void standard_ckks_multiply(benchmark::State& state, ComparisonMeta& meta) {
-  helib::Ptxt<helib::CKKS> ptxt1(meta.standard_data->context);
-  helib::Ptxt<helib::CKKS> ptxt2(meta.standard_data->context);
+static void standard_ckks_multiply(benchmark::State& state, Meta& meta) {
+  helib::Ptxt<helib::CKKS> ptxt1(meta.data->context);
+  helib::Ptxt<helib::CKKS> ptxt2(meta.data->context);
   ptxt1.random();
   ptxt2.random();
 
-  helib::Ctxt ctxt1(meta.standard_data->publicKey);
-  helib::Ctxt ctxt2(meta.standard_data->publicKey);
-  meta.standard_data->publicKey.Encrypt(ctxt1, ptxt1);
-  meta.standard_data->publicKey.Encrypt(ctxt2, ptxt2);
+  helib::Ctxt ctxt1(meta.data->publicKey);
+  helib::Ctxt ctxt2(meta.data->publicKey);
+  meta.data->publicKey.Encrypt(ctxt1, ptxt1);
+  meta.data->publicKey.Encrypt(ctxt2, ptxt2);
   
   for (auto _ : state) {
     state.PauseTiming();
@@ -161,44 +140,44 @@ static void standard_ckks_multiply(benchmark::State& state, ComparisonMeta& meta
 
 // ===================== Binary CKKS Benchmarks =====================
 
-static void binary_ckks_keygen(benchmark::State& state, ComparisonMeta& meta) {
+static void binary_ckks_keygen(benchmark::State& state, BinaryMeta& meta) {
   for (auto _ : state) {
-    SimpleBinaryCKKS scheme(meta.binary_data->security_level, meta.binary_data->ring_dim);
+    SimpleBinaryCKKS scheme(meta.data->security_level, meta.data->ring_dim);
     SimpleBinaryCKKSKeys keys = scheme.keyGen();
     benchmark::DoNotOptimize(keys);
   }
 }
 
-static void binary_ckks_encrypt(benchmark::State& state, ComparisonMeta& meta) {
+static void binary_ckks_encrypt(benchmark::State& state, BinaryMeta& meta) {
   // Generate test data
   std::vector<long> data(16);
   for (size_t i = 0; i < data.size(); ++i) {
     data[i] = rand() % 2;
   }
-  SimpleBinaryPoly encoded = meta.binary_data->scheme->encode(data);
+  SimpleBinaryPoly encoded = meta.data->scheme->encode(data);
   
   for (auto _ : state) {
-    SimpleBinaryCKKSCiphertext ctxt = meta.binary_data->scheme->encrypt(encoded, *meta.binary_data->keys);
+    SimpleBinaryCKKSCiphertext ctxt = meta.data->scheme->encrypt(encoded, *meta.data->keys);
     benchmark::DoNotOptimize(ctxt);
   }
 }
 
-static void binary_ckks_decrypt(benchmark::State& state, ComparisonMeta& meta) {
+static void binary_ckks_decrypt(benchmark::State& state, BinaryMeta& meta) {
   // Generate test data and encrypt
   std::vector<long> data(16);
   for (size_t i = 0; i < data.size(); ++i) {
     data[i] = rand() % 2;
   }
-  SimpleBinaryPoly encoded = meta.binary_data->scheme->encode(data);
-  SimpleBinaryCKKSCiphertext ctxt = meta.binary_data->scheme->encrypt(encoded, *meta.binary_data->keys);
+  SimpleBinaryPoly encoded = meta.data->scheme->encode(data);
+  SimpleBinaryCKKSCiphertext ctxt = meta.data->scheme->encrypt(encoded, *meta.data->keys);
   
   for (auto _ : state) {
-    SimpleBinaryPoly decrypted = meta.binary_data->scheme->decrypt(ctxt, *meta.binary_data->keys);
+    SimpleBinaryPoly decrypted = meta.data->scheme->decrypt(ctxt, *meta.data->keys);
     benchmark::DoNotOptimize(decrypted);
   }
 }
 
-static void binary_ckks_add(benchmark::State& state, ComparisonMeta& meta) {
+static void binary_ckks_add(benchmark::State& state, BinaryMeta& meta) {
   // Generate test data
   std::vector<long> data1(16), data2(16);
   for (size_t i = 0; i < data1.size(); ++i) {
@@ -206,19 +185,19 @@ static void binary_ckks_add(benchmark::State& state, ComparisonMeta& meta) {
     data2[i] = rand() % 2;
   }
   
-  SimpleBinaryPoly encoded1 = meta.binary_data->scheme->encode(data1);
-  SimpleBinaryPoly encoded2 = meta.binary_data->scheme->encode(data2);
+  SimpleBinaryPoly encoded1 = meta.data->scheme->encode(data1);
+  SimpleBinaryPoly encoded2 = meta.data->scheme->encode(data2);
   
-  SimpleBinaryCKKSCiphertext ctxt1 = meta.binary_data->scheme->encrypt(encoded1, *meta.binary_data->keys);
-  SimpleBinaryCKKSCiphertext ctxt2 = meta.binary_data->scheme->encrypt(encoded2, *meta.binary_data->keys);
+  SimpleBinaryCKKSCiphertext ctxt1 = meta.data->scheme->encrypt(encoded1, *meta.data->keys);
+  SimpleBinaryCKKSCiphertext ctxt2 = meta.data->scheme->encrypt(encoded2, *meta.data->keys);
   
   for (auto _ : state) {
-    SimpleBinaryCKKSCiphertext result = meta.binary_data->scheme->add(ctxt1, ctxt2);
+    SimpleBinaryCKKSCiphertext result = meta.data->scheme->add(ctxt1, ctxt2);
     benchmark::DoNotOptimize(result);
   }
 }
 
-static void binary_ckks_multiply(benchmark::State& state, ComparisonMeta& meta) {
+static void binary_ckks_multiply(benchmark::State& state, BinaryMeta& meta) {
   // Generate test data
   std::vector<long> data1(16), data2(16);
   for (size_t i = 0; i < data1.size(); ++i) {
@@ -226,95 +205,74 @@ static void binary_ckks_multiply(benchmark::State& state, ComparisonMeta& meta) 
     data2[i] = rand() % 2;
   }
   
-  SimpleBinaryPoly encoded1 = meta.binary_data->scheme->encode(data1);
-  SimpleBinaryPoly encoded2 = meta.binary_data->scheme->encode(data2);
+  SimpleBinaryPoly encoded1 = meta.data->scheme->encode(data1);
+  SimpleBinaryPoly encoded2 = meta.data->scheme->encode(data2);
   
-  SimpleBinaryCKKSCiphertext ctxt1 = meta.binary_data->scheme->encrypt(encoded1, *meta.binary_data->keys);
-  SimpleBinaryCKKSCiphertext ctxt2 = meta.binary_data->scheme->encrypt(encoded2, *meta.binary_data->keys);
+  SimpleBinaryCKKSCiphertext ctxt1 = meta.data->scheme->encrypt(encoded1, *meta.data->keys);
+  SimpleBinaryCKKSCiphertext ctxt2 = meta.data->scheme->encrypt(encoded2, *meta.data->keys);
   
   for (auto _ : state) {
-    SimpleBinaryCKKSCiphertext result = meta.binary_data->scheme->multiply(ctxt1, ctxt2, *meta.binary_data->keys);
+    SimpleBinaryCKKSCiphertext result = meta.data->scheme->multiply(ctxt1, ctxt2, *meta.data->keys);
     benchmark::DoNotOptimize(result);
   }
 }
 
 // ===================== Benchmark Registration =====================
 
-ComparisonMeta comparison_meta;
+// Meta objects for standard and binary CKKS
+Meta standard_meta;
+BinaryMeta binary_meta;
 
 // Small parameters for quick testing
-ComparisonParams small_params(/*m=*/1024, /*r=*/1, /*L=*/360, /*security=*/128);
+Params small_params(/*m=*/1024, /*r=*/1, /*L=*/360);
 
 // Register Standard CKKS benchmarks
-BENCHMARK_CAPTURE(standard_ckks_keygen, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(standard_ckks_encrypt, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(standard_ckks_decrypt, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(standard_ckks_add, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(standard_ckks_multiply, small_1024, comparison_meta(small_params));
+HE_BENCH_CAPTURE(standard_ckks_keygen, small_1024, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_encrypt, small_1024, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_decrypt, small_1024, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_add, small_1024, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_multiply, small_1024, standard_meta);
 
-// Register Binary CKKS benchmarks  
-BENCHMARK_CAPTURE(binary_ckks_keygen, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(binary_ckks_encrypt, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(binary_ckks_decrypt, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(binary_ckks_add, small_1024, comparison_meta(small_params));
-BENCHMARK_CAPTURE(binary_ckks_multiply, small_1024, comparison_meta(small_params));
+// Register Binary CKKS benchmarks - need custom macro since they use BinaryMeta
+#define BINARY_BENCH_CAPTURE(func, name, meta)                                \
+  BENCHMARK_CAPTURE(func, name, meta(small_params))
+
+BINARY_BENCH_CAPTURE(binary_ckks_keygen, small_1024, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_encrypt, small_1024, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_decrypt, small_1024, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_add, small_1024, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_multiply, small_1024, binary_meta);
 
 // Medium parameters
-ComparisonParams medium_params(/*m=*/2048, /*r=*/1, /*L=*/360, /*security=*/128);
+Params medium_params(/*m=*/2048, /*r=*/1, /*L=*/360);
 
-BENCHMARK_CAPTURE(standard_ckks_keygen, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(standard_ckks_encrypt, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(standard_ckks_decrypt, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(standard_ckks_add, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(standard_ckks_multiply, medium_2048, comparison_meta(medium_params));
+HE_BENCH_CAPTURE(standard_ckks_keygen, medium_2048, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_encrypt, medium_2048, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_decrypt, medium_2048, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_add, medium_2048, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_multiply, medium_2048, standard_meta);
 
-BENCHMARK_CAPTURE(binary_ckks_keygen, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(binary_ckks_encrypt, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(binary_ckks_decrypt, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(binary_ckks_add, medium_2048, comparison_meta(medium_params));
-BENCHMARK_CAPTURE(binary_ckks_multiply, medium_2048, comparison_meta(medium_params));
+BINARY_BENCH_CAPTURE(binary_ckks_keygen, medium_2048, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_encrypt, medium_2048, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_decrypt, medium_2048, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_add, medium_2048, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_multiply, medium_2048, binary_meta);
 
 // Large parameters (if system can handle)
-ComparisonParams large_params(/*m=*/4096, /*r=*/1, /*L=*/360, /*security=*/128);
+Params large_params(/*m=*/4096, /*r=*/1, /*L=*/360);
 
-BENCHMARK_CAPTURE(standard_ckks_keygen, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(standard_ckks_encrypt, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(standard_ckks_decrypt, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(standard_ckks_add, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(standard_ckks_multiply, large_4096, comparison_meta(large_params));
+HE_BENCH_CAPTURE(standard_ckks_keygen, large_4096, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_encrypt, large_4096, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_decrypt, large_4096, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_add, large_4096, standard_meta);
+HE_BENCH_CAPTURE(standard_ckks_multiply, large_4096, standard_meta);
 
-BENCHMARK_CAPTURE(binary_ckks_keygen, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(binary_ckks_encrypt, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(binary_ckks_decrypt, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(binary_ckks_add, large_4096, comparison_meta(large_params));
-BENCHMARK_CAPTURE(binary_ckks_multiply, large_4096, comparison_meta(large_params));
+BINARY_BENCH_CAPTURE(binary_ckks_keygen, large_4096, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_encrypt, large_4096, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_decrypt, large_4096, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_add, large_4096, binary_meta);
+BINARY_BENCH_CAPTURE(binary_ckks_multiply, large_4096, binary_meta);
 
 } // namespace
 
-/**
- * Custom main to add result analysis
- */
-int main(int argc, char** argv) {
-  std::cout << "=== CKKS Standard vs Binary Variant Performance Comparison ===" << std::endl;
-  std::cout << "Comparing HElib Standard CKKS with Binary CKKS over Z_2[x]/(x^n + 1)" << std::endl;
-  std::cout << "=================================================================" << std::endl;
-  
-  // Initialize Google Benchmark
-  benchmark::Initialize(&argc, argv);
-  
-  if (benchmark::ReportUnrecognizedArguments(argc, argv)) {
-    return 1;
-  }
-  
-  // Run benchmarks with custom reporter
-  benchmark::RunSpecifiedBenchmarks();
-  
-  std::cout << "\n=== Benchmark Analysis ===" << std::endl;
-  std::cout << "Results show performance comparison between:" << std::endl;
-  std::cout << "- Standard CKKS: Full-featured real/complex homomorphic encryption" << std::endl;
-  std::cout << "- Binary CKKS: Simplified binary polynomial variant" << std::endl;
-  std::cout << "\nFor detailed analysis, use benchmark output with --benchmark_format=json" << std::endl;
-  std::cout << "and process with analysis tools." << std::endl;
-  
-  return 0;
-}
+BENCHMARK_MAIN();
