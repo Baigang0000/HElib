@@ -61,6 +61,7 @@ set(TRGTS bgv_basic
           bgv_thinboot
           bgv_fatboot
           ckks_basic
+          ckks_comparison
           IO
           fft_bench)
 
@@ -70,16 +71,30 @@ foreach(TRGT ${TRGTS})
   list(APPEND SRCS "${TRGT}.cpp")
 endforeach()
 
+# Special handling for ckks_comparison which needs binary CKKS implementation
+set(BINARY_CKKS_SRC "../simple_binary_ckks.cpp")
+
 if(SINGLE_EXEC)
   # Add each benchmark source file to the executable list
-  add_executable(helib_benchmark ${SRCS})
+  add_executable(helib_benchmark ${SRCS} ${BINARY_CKKS_SRC})
+  # Add include directory for binary CKKS headers
+  target_include_directories(helib_benchmark PRIVATE "..")
   # Specify the libraries each target is dependent upon
   target_link_libraries(helib_benchmark benchmark::benchmark_main helib)
 else(SINGLE_EXEC)
   foreach(TRGT ${TRGTS})
-    # Add each benchmark source file to the executable list
-    add_executable(${TRGT} ${TRGT}.cpp)
-    # Specify the libraries each target is dependent upon
-    target_link_libraries(${TRGT} benchmark::benchmark_main helib)
+    if(TRGT STREQUAL "ckks_comparison")
+      # Special handling for ckks_comparison benchmark
+      add_executable(${TRGT} ${TRGT}.cpp ${BINARY_CKKS_SRC})
+      # Add include directory for binary CKKS headers
+      target_include_directories(${TRGT} PRIVATE "..")
+      # Specify the libraries each target is dependent upon
+      target_link_libraries(${TRGT} benchmark::benchmark_main helib)
+    else()
+      # Add each benchmark source file to the executable list
+      add_executable(${TRGT} ${TRGT}.cpp)
+      # Specify the libraries each target is dependent upon
+      target_link_libraries(${TRGT} benchmark::benchmark_main helib)
+    endif()
   endforeach()
 endif(SINGLE_EXEC)
