@@ -233,18 +233,18 @@ HE_BENCH_CAPTURE(standard_ckks_decrypt, small_1024, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_add, small_1024, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_multiply, small_1024, standard_meta);
 
-// Register Binary CKKS benchmarks - need custom macro since they use BinaryMeta
-#define BINARY_BENCH_CAPTURE(func, name, meta)                                \
-  BENCHMARK_CAPTURE(func, name, meta(small_params))
-
-BINARY_BENCH_CAPTURE(binary_ckks_keygen, small_1024, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_encrypt, small_1024, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_decrypt, small_1024, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_add, small_1024, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_multiply, small_1024, binary_meta);
-
 // Medium parameters
 Params medium_params(/*m=*/2048, /*r=*/1, /*L=*/360);
+
+// Large parameters (if system can handle)
+Params large_params(/*m=*/4096, /*r=*/1, /*L=*/360);
+
+// Register Binary CKKS benchmarks - use direct BENCHMARK_CAPTURE with correct params
+BENCHMARK_CAPTURE(binary_ckks_keygen, small_1024, binary_meta(small_params));
+BENCHMARK_CAPTURE(binary_ckks_encrypt, small_1024, binary_meta(small_params));
+BENCHMARK_CAPTURE(binary_ckks_decrypt, small_1024, binary_meta(small_params));
+BENCHMARK_CAPTURE(binary_ckks_add, small_1024, binary_meta(small_params));
+BENCHMARK_CAPTURE(binary_ckks_multiply, small_1024, binary_meta(small_params));
 
 HE_BENCH_CAPTURE(standard_ckks_keygen, medium_2048, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_encrypt, medium_2048, standard_meta);
@@ -252,14 +252,11 @@ HE_BENCH_CAPTURE(standard_ckks_decrypt, medium_2048, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_add, medium_2048, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_multiply, medium_2048, standard_meta);
 
-BINARY_BENCH_CAPTURE(binary_ckks_keygen, medium_2048, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_encrypt, medium_2048, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_decrypt, medium_2048, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_add, medium_2048, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_multiply, medium_2048, binary_meta);
-
-// Large parameters (if system can handle)
-Params large_params(/*m=*/4096, /*r=*/1, /*L=*/360);
+BENCHMARK_CAPTURE(binary_ckks_keygen, medium_2048, binary_meta(medium_params));
+BENCHMARK_CAPTURE(binary_ckks_encrypt, medium_2048, binary_meta(medium_params));
+BENCHMARK_CAPTURE(binary_ckks_decrypt, medium_2048, binary_meta(medium_params));
+BENCHMARK_CAPTURE(binary_ckks_add, medium_2048, binary_meta(medium_params));
+BENCHMARK_CAPTURE(binary_ckks_multiply, medium_2048, binary_meta(medium_params));
 
 HE_BENCH_CAPTURE(standard_ckks_keygen, large_4096, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_encrypt, large_4096, standard_meta);
@@ -267,11 +264,11 @@ HE_BENCH_CAPTURE(standard_ckks_decrypt, large_4096, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_add, large_4096, standard_meta);
 HE_BENCH_CAPTURE(standard_ckks_multiply, large_4096, standard_meta);
 
-BINARY_BENCH_CAPTURE(binary_ckks_keygen, large_4096, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_encrypt, large_4096, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_decrypt, large_4096, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_add, large_4096, binary_meta);
-BINARY_BENCH_CAPTURE(binary_ckks_multiply, large_4096, binary_meta);
+BENCHMARK_CAPTURE(binary_ckks_keygen, large_4096, binary_meta(large_params));
+BENCHMARK_CAPTURE(binary_ckks_encrypt, large_4096, binary_meta(large_params));
+BENCHMARK_CAPTURE(binary_ckks_decrypt, large_4096, binary_meta(large_params));
+BENCHMARK_CAPTURE(binary_ckks_add, large_4096, binary_meta(large_params));
+BENCHMARK_CAPTURE(binary_ckks_multiply, large_4096, binary_meta(large_params));
 
 } // namespace
 
